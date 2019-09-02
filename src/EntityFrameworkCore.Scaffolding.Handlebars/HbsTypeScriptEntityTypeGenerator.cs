@@ -147,7 +147,7 @@ namespace EntityFrameworkCore.Scaffolding.Handlebars
                     });
                 }
 
-                var transformedLines = EntityTypeTransformationService.TransformConstructor(lines);
+                var transformedLines = EntityTypeTransformationService.TransformNavigationProperties(lines, entityType.Name);
 
                 TemplateData.Add("lines", transformedLines);
             }
@@ -173,7 +173,7 @@ namespace EntityFrameworkCore.Scaffolding.Handlebars
                 });
             }
 
-            var transformedProperties = EntityTypeTransformationService.TransformProperties(properties);
+            var transformedProperties = EntityTypeTransformationService.TransformProperties(properties, entityType.Name);
 
             TemplateData.Add("properties", transformedProperties);
         }
@@ -205,7 +205,7 @@ namespace EntityFrameworkCore.Scaffolding.Handlebars
                     });
                 }
 
-                var transformedNavProperties = EntityTypeTransformationService.TransformNavigationProperties(navProperties);
+                var transformedNavProperties = EntityTypeTransformationService.TransformNavigationProperties(navProperties, entityType.Name);
 
                 TemplateData.Add("nav-properties", transformedNavProperties);
             }

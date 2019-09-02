@@ -367,7 +367,7 @@ namespace EntityFrameworkCore.Scaffolding.Handlebars
         private void GenerateEntityType(IEntityType entityType, bool useDataAnnotations,
             IndentedStringBuilder sb)
         {
-            GenerateKey(entityType.FindPrimaryKey(), useDataAnnotations, sb);
+            GenerateKey(entityType.FindPrimaryKey(), useDataAnnotations, sb, entityType);
 
             var annotations = entityType.GetAnnotations().ToList();
             RemoveAnnotation(ref annotations, RelationalAnnotationNames.TableName);
@@ -408,20 +408,41 @@ namespace EntityFrameworkCore.Scaffolding.Handlebars
 
             foreach (var index in entityType.GetIndexes())
             {
-                GenerateIndex(index, sb);
+                GenerateIndex(index, sb, entityType);
             }
 
             foreach (var property in entityType.GetProperties())
             {
-                var transformedPropName = EntityTypeTransformationService.TransformPropertyName(property.Name);
+                var transformedPropName = EntityTypeTransformationService.TransformPropertyName(property.Name, ConvertToShorthandType(property.ClrType.Name), entityType.Name);
                 GenerateProperty(property, transformedPropName, useDataAnnotations, sb);
             }
 
             foreach (var foreignKey in entityType.GetForeignKeys())
             {
-                var transformedDepPropName = EntityTypeTransformationService.TransformPropertyName(foreignKey.DependentToPrincipal.Name);
-                var transformedPrincipalPropName = EntityTypeTransformationService.TransformPropertyName(foreignKey.PrincipalToDependent.Name);
-                GenerateRelationship(foreignKey, transformedDepPropName, transformedPrincipalPropName, useDataAnnotations, sb);
+                var transformedDepPropName = EntityTypeTransformationService.TransformNavPropertyName(foreignKey.DependentToPrincipal.Name, foreignKey.DependentToPrincipal.GetTargetType().Name, entityType.Name);
+                var transformedPrincipalPropName = EntityTypeTransformationService.TransformNavPropertyName(foreignKey.PrincipalToDependent.Name, foreignKey.PrincipalToDependent.GetTargetType().Name, entityType.Name);
+                GenerateRelationship(foreignKey, transformedDepPropName, transformedPrincipalPropName, useDataAnnotations, sb, entityType);
+            }
+        }
+
+        private string ConvertToShorthandType(string typeName)
+        {
+            switch (typeName)
+            {
+                case "UInt16":
+                case "UInt32":
+                case "UInt64":
+                case "Int16":
+                case "Int32":
+                case "Int64": return "int";
+                case "Char": return "char";
+                case "String": return "string";
+                case "Decimal": return "decimal";
+                case "Single": return "float";
+                case "Double": return "double";
+                case "Byte": return "byte";
+                case "Boolean": return "bool";
+                default: return typeName;
             }
         }
 
@@ -454,7 +475,7 @@ namespace EntityFrameworkCore.Scaffolding.Handlebars
             }
         }
 
-        private void GenerateKey(IKey key, bool useDataAnnotations, IndentedStringBuilder sb)
+        private void GenerateKey(IKey key, bool useDataAnnotations, IndentedStringBuilder sb, IEntityType declaringType)
         {
             if (key == null)
             {
@@ -483,7 +504,7 @@ namespace EntityFrameworkCore.Scaffolding.Handlebars
 
             var lines = new List<string>
             {
-                $".{nameof(EntityTypeBuilder.HasKey)}(e => {GenerateLambdaToKey(key.Properties, "e")})"
+                $".{nameof(EntityTypeBuilder.HasKey)}(e => {GenerateLambdaToKey(key.Properties, "e", declaringType)})"
             };
 
             if (explicitName)
@@ -545,11 +566,11 @@ namespace EntityFrameworkCore.Scaffolding.Handlebars
             }
         }
 
-        private void GenerateIndex(IIndex index, IndentedStringBuilder sb)
+        private void GenerateIndex(IIndex index, IndentedStringBuilder sb, IEntityType declaringType)
         {
             var lines = new List<string>
             {
-                $".{nameof(EntityTypeBuilder.HasIndex)}(e => {GenerateLambdaToKey(index.Properties, "e")})"
+                $".{nameof(EntityTypeBuilder.HasIndex)}(e => {GenerateLambdaToKey(index.Properties, "e", declaringType)})"
             };
 
             var annotations = index.GetAnnotations().ToList();
@@ -771,7 +792,7 @@ namespace EntityFrameworkCore.Scaffolding.Handlebars
         }
 
         private void GenerateRelationship(IForeignKey foreignKey, string dependentPropName, string principalPropName,
-            bool useDataAnnotations, IndentedStringBuilder sb)
+            bool useDataAnnotations, IndentedStringBuilder sb, IEntityType declaringType)
         {
             var canUseDataAnnotations = true;
             var annotations = foreignKey.GetAnnotations().ToList();
@@ -787,19 +808,19 @@ namespace EntityFrameworkCore.Scaffolding.Handlebars
             {
                 canUseDataAnnotations = false;
                 var principlePropDisplayName = EntityTypeTransformationService
-                    .TransformPropertyName(foreignKey.PrincipalEntityType.DisplayName());
+                    .TransformNavPropertyName(foreignKey.PrincipalEntityType.DisplayName(), foreignKey.PrincipalEntityType.Name, declaringType.Name);
                 lines.Add(
                     $".{nameof(ReferenceReferenceBuilder.HasPrincipalKey)}"
                     + $"{(foreignKey.IsUnique ? $"<{principlePropDisplayName}>" : "")}"
-                    + $"(p => {GenerateLambdaToKey(foreignKey.PrincipalKey.Properties, "p")})");
+                    + $"(p => {GenerateLambdaToKey(foreignKey.PrincipalKey.Properties, "p", declaringType)})");
             }
 
             var dependentPropDisplayName = EntityTypeTransformationService
-                .TransformPropertyName(foreignKey.DeclaringEntityType.DisplayName());
+                .TransformNavPropertyName(foreignKey.DeclaringEntityType.DisplayName(), foreignKey.DeclaringEntityType.Name, declaringType.Name);
             lines.Add(
                 $".{nameof(ReferenceReferenceBuilder.HasForeignKey)}"
                 + $"{(foreignKey.IsUnique ? $"<{dependentPropDisplayName}>" : "")}"
-                + $"(d => {GenerateLambdaToKey(foreignKey.Properties, "d")})");
+                + $"(d => {GenerateLambdaToKey(foreignKey.Properties, "d", declaringType)})");
 
             var defaultOnDeleteAction = foreignKey.IsRequired
                 ? DeleteBehavior.Cascade
@@ -926,7 +947,7 @@ namespace EntityFrameworkCore.Scaffolding.Handlebars
 
         private string GenerateLambdaToKey(
             IReadOnlyList<IProperty> properties,
-            string lambdaIdentifier)
+            string lambdaIdentifier, IEntityType declaringType)
         {
             if (properties.Count <= 0)
             {
@@ -934,8 +955,8 @@ namespace EntityFrameworkCore.Scaffolding.Handlebars
             }
 
             return properties.Count == 1
-                ? $"{lambdaIdentifier}.{EntityTypeTransformationService.TransformPropertyName(properties[0].Name)}"
-                : $"new {{ {string.Join(", ", properties.Select(p => lambdaIdentifier + "." + EntityTypeTransformationService.TransformPropertyName(p.Name)))} }}";
+                ? $"{lambdaIdentifier}.{EntityTypeTransformationService.TransformPropertyName(properties[0].Name, ConvertToShorthandType(properties[0].ClrType.Name), declaringType.Name)}"
+                : $"new {{ {string.Join(", ", properties.Select(p => lambdaIdentifier + "." + EntityTypeTransformationService.TransformPropertyName(p.Name, ConvertToShorthandType(p.ClrType.Name), declaringType.Name)))} }}";
         }
 
         private void RemoveAnnotation(ref List<IAnnotation> annotations, string annotationName)

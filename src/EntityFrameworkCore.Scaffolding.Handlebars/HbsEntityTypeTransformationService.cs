@@ -18,10 +18,10 @@ namespace EntityFrameworkCore.Scaffolding.Handlebars
         /// </summary>
         public Func<string, string> EntityFileNameTransformer { get; }
 
-        /// <summary>
-        /// Constructor transformer.
-        /// </summary>
-        public Func<EntityPropertyInfo, EntityPropertyInfo> ConstructorTransformer { get; }
+        ///// <summary>
+        ///// Constructor transformer.
+        ///// </summary>
+        //public Func<EntityPropertyInfo, EntityPropertyInfo> ConstructorTransformer { get; }
 
         /// <summary>
         /// Property name transformer.
@@ -38,19 +38,18 @@ namespace EntityFrameworkCore.Scaffolding.Handlebars
         /// </summary>
         /// <param name="entityNameTransformer">Entity name transformer.</param>
         /// <param name="entityFileNameTransformer">Entity file name transformer.</param>
-        /// <param name="constructorTransformer">Constructor transformer.</param>
         /// <param name="propertyTransformer">Property name transformer.</param>
         /// <param name="navPropertyTransformer">Navigation property name transformer.</param>
         public HbsEntityTypeTransformationService(
             Func<string, string> entityNameTransformer = null,
             Func<string, string> entityFileNameTransformer = null,
-            Func<EntityPropertyInfo, EntityPropertyInfo> constructorTransformer = null,
+            //Func<EntityPropertyInfo, EntityPropertyInfo> constructorTransformer = null,
             Func<EntityPropertyInfo, EntityPropertyInfo> propertyTransformer = null,
             Func<EntityPropertyInfo, EntityPropertyInfo> navPropertyTransformer = null)
         {
             EntityNameTransformer = entityNameTransformer;
             EntityFileNameTransformer = entityFileNameTransformer;
-            ConstructorTransformer = constructorTransformer;
+            //ConstructorTransformer = constructorTransformer;
             PropertyTransformer = propertyTransformer;
             NavPropertyTransformer = navPropertyTransformer;
         }
@@ -75,51 +74,67 @@ namespace EntityFrameworkCore.Scaffolding.Handlebars
         /// Transform single property name.
         /// </summary>
         /// <param name="propertyName">Property name.</param>
+        /// <param name="typeName">Type name.</param>
+        /// <param name="declaringType">Declaring type.</param>
         /// <returns>Transformed property name.</returns>
-        public string TransformPropertyName(string propertyName)
+        public string TransformPropertyName(string propertyName, string typeName, string declaringType)
         {
-            var propTypeInfo = new EntityPropertyInfo { PropertyName = propertyName };
+            var propTypeInfo = new EntityPropertyInfo { PropertyName = propertyName, PropertyType = typeName, DeclaringType = declaringType };
             return PropertyTransformer?.Invoke(propTypeInfo)?.PropertyName ?? propertyName;
         }
 
         /// <summary>
-        /// Transform entity type constructor.
+        /// Transform single navigation property name.
         /// </summary>
-        /// <param name="lines">Constructor lines.</param>
-        /// <returns>Transformed constructor lines.</returns>
-        public List<Dictionary<string, object>> TransformConstructor(List<Dictionary<string, object>> lines)
+        /// <param name="propertyName">Property name.</param>
+        /// <param name="typeName">Property type.</param>
+        /// <param name="declaringType">Declaring type.</param>
+        /// <returns>Transformed property name.</returns>
+        public string TransformNavPropertyName(string propertyName, string typeName, string declaringType)
         {
-            var transformedLines = new List<Dictionary<string, object>>();
-
-            foreach (var line in lines)
-            {
-                var propTypeInfo = new EntityPropertyInfo(line["property-type"] as string,
-                    line["property-name"] as string);
-                var transformedProp = ConstructorTransformer?.Invoke(propTypeInfo) ?? propTypeInfo;
-
-                transformedLines.Add(new Dictionary<string, object>
-                {
-                    { "property-name", transformedProp.PropertyName },
-                    { "property-type", transformedProp.PropertyType },
-                });
-            }
-
-            return transformedLines;
+            var propTypeInfo = new EntityPropertyInfo { PropertyName = propertyName, PropertyType = typeName, DeclaringType = declaringType };
+            return NavPropertyTransformer?.Invoke(propTypeInfo)?.PropertyName ?? propertyName;
         }
+
+        ///// <summary>
+        ///// Transform entity type constructor.
+        ///// </summary>
+        ///// <param name="lines">Constructor lines.</param>
+        ///// <returns>Transformed constructor lines.</returns>
+        //public List<Dictionary<string, object>> TransformConstructor(List<Dictionary<string, object>> lines)
+        //{
+        //    var transformedLines = new List<Dictionary<string, object>>();
+
+        //    foreach (var line in lines)
+        //    {
+        //        var propTypeInfo = new EntityPropertyInfo(line["property-type"] as string,
+        //            line["property-name"] as string);
+        //        var transformedProp = ConstructorTransformer?.Invoke(propTypeInfo) ?? propTypeInfo;
+
+        //        transformedLines.Add(new Dictionary<string, object>
+        //        {
+        //            { "property-name", transformedProp.PropertyName },
+        //            { "property-type", transformedProp.PropertyType },
+        //        });
+        //    }
+
+        //    return transformedLines;
+        //}
 
         /// <summary>
         /// Transform entity type properties.
         /// </summary>
         /// <param name="properties">Entity type properties.</param>
+        /// <param name="declaringType">Declaring type.</param>
         /// <returns>Transformed entity type properties.</returns>
-        public List<Dictionary<string, object>> TransformProperties(List<Dictionary<string, object>> properties)
+        public List<Dictionary<string, object>> TransformProperties(List<Dictionary<string, object>> properties, string declaringType)
         {
             var transformedProperties = new List<Dictionary<string, object>>();
 
             foreach (var property in properties)
             {
                 var propTypeInfo = new EntityPropertyInfo(property["property-type"] as string, 
-                    property["property-name"] as string);
+                    property["property-name"] as string, declaringType);
                 var transformedProp = PropertyTransformer?.Invoke(propTypeInfo) ?? propTypeInfo;
 
                 transformedProperties.Add(new Dictionary<string, object>
@@ -137,15 +152,16 @@ namespace EntityFrameworkCore.Scaffolding.Handlebars
         /// Transform entity type navigation properties.
         /// </summary>
         /// <param name="navProperties">Entity type navigation properties.</param>
+        /// <param name="declaringType">Declaring type.</param>
         /// <returns>Transformed entity type navigation properties.</returns>
-        public List<Dictionary<string, object>> TransformNavigationProperties(List<Dictionary<string, object>> navProperties)
+        public List<Dictionary<string, object>> TransformNavigationProperties(List<Dictionary<string, object>> navProperties, string declaringType)
         {
             var transformedNavProperties = new List<Dictionary<string, object>>();
 
             foreach (var navProperty in navProperties)
             {
                 var propTypeInfo = new EntityPropertyInfo(navProperty["nav-property-type"] as string,
-                    navProperty["nav-property-name"] as string);
+                    navProperty["nav-property-name"] as string, declaringType);
                 var transformedProp = NavPropertyTransformer?.Invoke(propTypeInfo) ?? propTypeInfo;
 
                 transformedNavProperties.Add(new Dictionary<string, object>
@@ -153,7 +169,7 @@ namespace EntityFrameworkCore.Scaffolding.Handlebars
                     { "nav-property-collection", navProperty["nav-property-collection"] },
                     { "nav-property-type", transformedProp.PropertyType },
                     { "nav-property-name", transformedProp.PropertyName },
-                    { "nav-property-annotations", navProperty["nav-property-annotations"] }
+                    { "nav-property-annotations", navProperty.ContainsKey("nav-property-annotations") ? navProperty["nav-property-annotations"] : null }
                 });
             }
 

@@ -22,6 +22,19 @@
         }
 
         /// <summary>
+        /// Constructor.
+        /// </summary>
+        /// <param name="propertyType">Property type.</param>
+        /// <param name="propertyName">Property name.</param>
+        /// <param name="declaringType">Declaring type.</param>
+        public EntityPropertyInfo(string propertyType, string propertyName, string declaringType)
+        {
+            PropertyType = propertyType;
+            PropertyName = propertyName;
+            DeclaringType = declaringType;
+        }
+
+        /// <summary>
         /// Property type.
         /// </summary>
         public string PropertyType { get; set; }
@@ -30,5 +43,10 @@
         /// Property name.
         /// </summary>
         public string PropertyName { get; set; }
+
+        /// <summary>
+        /// Declaring type.
+        /// </summary>
+        public string DeclaringType { get; set; }
     }
 }

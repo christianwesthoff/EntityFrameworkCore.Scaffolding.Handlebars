@@ -162,12 +162,13 @@ namespace EntityFrameworkCore.Scaffolding.Handlebars
                 {
                     lines.Add(new Dictionary<string, object>
                     {
-                        { "property-name", navigation.Name },
-                        { "property-type", navigation.GetTargetType().Name },
+                        { "nav-property-name", navigation.Name },
+                        { "nav-property-type", navigation.GetTargetType().Name },
+                        { "nav-property-collection", true },
                     });
                 }
 
-                var transformedLines = EntityTypeTransformationService.TransformConstructor(lines);
+                var transformedLines = EntityTypeTransformationService.TransformNavigationProperties(lines, entityType.Name);
 
                 TemplateData.Add("lines", transformedLines);
             }
@@ -200,7 +201,7 @@ namespace EntityFrameworkCore.Scaffolding.Handlebars
                 });
             }
 
-            var transformedProperties = EntityTypeTransformationService.TransformProperties(properties);
+            var transformedProperties = EntityTypeTransformationService.TransformProperties(properties, entityType.Name);
 
             TemplateData.Add("properties", transformedProperties);
         }
@@ -239,7 +240,7 @@ namespace EntityFrameworkCore.Scaffolding.Handlebars
                     });
                 }
 
-                var transformedNavProperties = EntityTypeTransformationService.TransformNavigationProperties(navProperties);
+                var transformedNavProperties = EntityTypeTransformationService.TransformNavigationProperties(navProperties, entityType.Name);
 
                 TemplateData.Add("nav-properties", transformedNavProperties);
             }

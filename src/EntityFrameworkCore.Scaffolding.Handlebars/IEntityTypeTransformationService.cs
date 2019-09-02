@@ -50,6 +50,7 @@ namespace EntityFrameworkCore.Scaffolding.Handlebars
         /// Transform entity type properties.
         /// </summary>
         /// <param name="properties">Entity type properties.</param>
+        /// <param name="declaringType">Declaring type.</param>
         /// <returns>Transformed entity type properties.</returns>
         List<Dictionary<string, object>> TransformProperties(List<Dictionary<string, object>> properties, string declaringType);
 
@@ -57,6 +58,7 @@ namespace EntityFrameworkCore.Scaffolding.Handlebars
         /// Transform entity type navigation properties.
         /// </summary>
         /// <param name="navProperties">Entity type navigation properties.</param>
+        /// <param name="declaringType">Declaring type.</param>
         /// <returns>Transformed entity type navigation properties.</returns>
         List<Dictionary<string, object>> TransformNavigationProperties(List<Dictionary<string, object>> navProperties, string declaringType);
     }
